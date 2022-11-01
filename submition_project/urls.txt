@@ -1,0 +1,5 @@
+[URL01] Public Url to GitHub repository: https://github.com/phanhoaithuabc/Udacity-DevOps-Auto-Deploy-Superpowers
+[URL02] Public URL for your S3 Bucket: http://udapeople-776c824.s3-website-us-east-1.amazonaws.com/#/employees
+[URL03] Public URL for Cloudfront distribution: http://d37s7bta2vj7f3.cloudfront.net/#/employees
+[URL04] Public URLs to deployed application backend in EC2: http://ec2-52-45-21-115.compute-1.amazonaws.com:3030/api/status
+[URL05] Public URL to Prometheus Server: http://ec2-52-45-21-115.compute-1.amazonaws.com:9090/targets

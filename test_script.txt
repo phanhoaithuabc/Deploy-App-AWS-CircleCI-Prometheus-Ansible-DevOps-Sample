@@ -1,0 +1,96 @@
+# install node-exporter for prometheus monitoring
+- run:
+    name: Install dependencies
+    command: |
+      # your code here
+      # Install prometheus
+      sudo useradd --no-create-home prometheus
+      sudo mkdir /etc/prometheus
+      sudo mkdir /var/lib/prometheus
+      wget https://github.com/prometheus/prometheus/releases/download/v2.19.0/prometheus-2.19.0.linux-amd64.tar.gz
+      tar xvfz prometheus-2.19.0.linux-amd64.tar.gz
+      sudo cp prometheus-2.19.0.linux-amd64/prometheus /usr/local/bin
+      sudo cp prometheus-2.19.0.linux-amd64/promtool /usr/local/bin/
+      sudo cp -r prometheus-2.19.0.linux-amd64/consoles /etc/prometheus
+      sudo cp -r prometheus-2.19.0.linux-amd64/console_libraries /etc/prometheus
+      sudo cp prometheus-2.19.0.linux-amd64/promtool /usr/local/bin/
+      rm -rf prometheus-2.19.0.linux-amd64.tar.gz prometheus-2.19.0.linux-amd64
+      # Initially and as a proof of concept we can configure Prometheus to monitor itself. All what we need to do is create or replace the content of /etc/prometheus/prometheus.yml.
+      sudo touch /etc/prometheus/prometheus.yml
+      sudo chmod 777 /etc/prometheus/prometheus.yml
+      sudo echo "global:" >> /etc/prometheus/prometheus.yml
+      sudo echo "  scrape_interval: 15s" >> /etc/prometheus/prometheus.yml
+      sudo echo "  external_labels:" >> /etc/prometheus/prometheus.yml
+      sudo echo "    monitor: 'prometheus'" >> /etc/prometheus/prometheus.yml
+      sudo echo "scrape_configs:" >> /etc/prometheus/prometheus.yml
+      sudo echo "  - job_name: 'prometheus'" >> /etc/prometheus/prometheus.yml
+      sudo echo "    static_configs:" >> /etc/prometheus/prometheus.yml
+      sudo echo "      - targets: ['localhost:9090']" >> /etc/prometheus/prometheus.yml
+      # We might want Prometheus to be available as a service. Every time we reboot the system Prometheus will start with the OS. Create /etc/systemd/system/prometheus.service and add to it the following content:
+      sudo touch /etc/systemd/system/prometheus.service
+      sudo chmod 777 /etc/systemd/system/prometheus.service
+      sudo echo "[Unit]" >> /etc/systemd/system/prometheus.service
+      sudo echo "Description=Prometheus" >> /etc/systemd/system/prometheus.service
+      sudo echo "Wants=network-online.target" >> /etc/systemd/system/prometheus.service
+      sudo echo "After=network-online.target" >> /etc/systemd/system/prometheus.service
+      sudo echo "[Service]" >> /etc/systemd/system/prometheus.service
+      sudo echo "User=prometheus" >> /etc/systemd/system/prometheus.service
+      sudo echo "Group=prometheus" >> /etc/systemd/system/prometheus.service
+      sudo echo "Type=simple" >> /etc/systemd/system/prometheus.service
+      sudo echo "ExecStart=/usr/local/bin/prometheus \\" >> /etc/systemd/system/prometheus.service
+      sudo echo "    --config.file /etc/prometheus/prometheus.yml \\" >> /etc/systemd/system/prometheus.service
+      sudo echo "    --storage.tsdb.path /var/lib/prometheus/ \\" >> /etc/systemd/system/prometheus.service
+      sudo echo "    --web.console.templates=/etc/prometheus/consoles \\" >> /etc/systemd/system/prometheus.service
+      sudo echo "    --web.console.libraries=/etc/prometheus/console_libraries" >> /etc/systemd/system/prometheus.service
+      sudo echo "[Install]" >> /etc/systemd/system/prometheus.service
+      sudo echo "WantedBy=multi-user.target" >> /etc/systemd/system/prometheus.service
+      # change the permissions of the directories, files and binaries we just added to our system.
+      sudo chown prometheus:prometheus /etc/prometheus
+      sudo chown prometheus:prometheus /usr/local/bin/prometheus
+      sudo chown prometheus:prometheus /usr/local/bin/promtool
+      sudo chown -R prometheus:prometheus /etc/prometheus/consoles
+      sudo chown -R prometheus:prometheus /etc/prometheus/console_libraries
+      sudo chown -R prometheus:prometheus /var/lib/prometheus
+      # Now we need to configure systemd.
+      sudo systemctl daemon-reload
+      sudo systemctl enable prometheus
+
+      # Install node-exporter
+      # create a user for Prometheus Node Exporter
+      sudo useradd --no-create-home node_exporter
+      # install Node Exporter binaries
+      wget https://github.com/prometheus/node_exporter/releases/download/v1.0.1/node_exporter-1.0.1.linux-amd64.tar.gz
+      tar xzf node_exporter-1.0.1.linux-amd64.tar.gz
+      sudo cp -r node_exporter-1.0.1.linux-amd64/node_exporter /usr/local/bin/node_exporter
+      rm -rf node_exporter-1.0.1.linux-amd64.tar.gz node_exporter-1.0.1.linux-amd64
+      # Configure a service. Create /etc/systemd/system/node-exporter.service if it doesn’t exist
+      sudo touch /etc/systemd/system/node-exporter.service
+      sudo chmod 777 /etc/systemd/system/node-exporter.service
+      echo "[Unit]" >> /etc/systemd/system/node-exporter.service
+      echo "Description=Prometheus Node Exporter Service" >> /etc/systemd/system/node-exporter.service
+      echo "After=network.target" >> /etc/systemd/system/node-exporter.service
+      echo "[Service]" >> /etc/systemd/system/node-exporter.service
+      echo "User=node_exporter" >> /etc/systemd/system/node-exporter.service
+      echo "Group=node_exporter" >> /etc/systemd/system/node-exporter.service
+      echo "Type=simple" >> /etc/systemd/system/node-exporter.service
+      echo "ExecStart=/usr/local/bin/node_exporter" >> /etc/systemd/system/node-exporter.service
+      echo "[Install]" >> /etc/systemd/system/node-exporter.service
+      echo "WantedBy=multi-user.target" >> /etc/systemd/system/node-exporter.service
+      # Configure systemd
+      systemctl daemon-reload
+      systemctl enable node-exporter
+      systemctl start node-exporter
+      systemctl status node-exporter
+      # Edit /etc/prometheus/prometheus.yml file.
+      sudo touch /etc/prometheus/prometheus.yml
+      sudo chmod 777 /etc/prometheus/prometheus.yml
+      echo "global:" >> /etc/prometheus/prometheus.yml
+      echo "  scrape_interval: 15s" >> /etc/prometheus/prometheus.yml
+      echo "  external_labels:" >> /etc/prometheus/prometheus.yml
+      echo "    monitor: 'prometheus'" >> /etc/prometheus/prometheus.yml
+      echo "scrape_configs:" >> /etc/prometheus/prometheus.yml
+      echo "  - job_name: 'node_exporter'" >> /etc/prometheus/prometheus.yml
+      echo "    static_configs:" >> /etc/prometheus/prometheus.yml
+      echo "      - targets: ['ec2-13-58-127-241.us-east-2.compute.amazonaws.com:9100']" >> /etc/prometheus/prometheus.yml
+      # Restart Prometheus service.
+      sudo systemctl restart prometheus
